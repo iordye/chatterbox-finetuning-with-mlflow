@@ -52,6 +52,9 @@ class TrainConfig:
     grad_accum: int = 1        # Effective Batch Size = Batch * Accum
     learning_rate: float = 1e-4 if is_lora else 1e-5  # T3 is sensitive, keep low
     num_epochs: int = 10 if is_lora else 30
+    optimizer: str = "adamw_torch"
+    scheduler: str = "linear"
+    seed: int = 42
     
     save_steps: int = 500
     save_total_limit: int = 5
@@ -63,3 +66,7 @@ class TrainConfig:
     max_text_len: int = 256
     max_speech_len: int = 850   # Truncates very long audio
     prompt_duration: float = 3.0 # Duration for the reference prompt (seconds)
+
+    # --- MLflow Tracking ---
+    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_experiment_name: str = "Chatterbox-Finetuning"

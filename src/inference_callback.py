@@ -1,5 +1,6 @@
 import os
 import torch
+import mlflow
 import soundfile as sf
 from transformers import TrainerCallback
 from safetensors.torch import load_file
@@ -36,7 +37,7 @@ class InferenceCallback(TrainerCallback):
 
     def on_save(self, args, state, control, **kwargs):
 
-        if self.skip_inference:
+        if self.skip_inference or not state.is_world_process_zero:
             return
 
         step = state.global_step
@@ -163,6 +164,7 @@ class InferenceCallback(TrainerCallback):
             trimmed_wav = trim_silence_with_vad(wav_np, inference_engine.sr)
             sf.write(output_path, trimmed_wav, inference_engine.sr)
             logger.info(f"Example saved: {output_path}")
+            self._log_generated_audio(output_path)
 
         except Exception as e:
             logger.error(f"LoRA inference callback failed: {e}", exc_info=True)
@@ -250,9 +252,20 @@ class InferenceCallback(TrainerCallback):
         trimmed_wav = trim_silence_with_vad(wav_np, tts_engine.sr)
         sf.write(output_path, trimmed_wav, tts_engine.sr)
         logger.info(f"Example saved: {output_path}")
+        self._log_generated_audio(output_path)
 
         del tts_engine
         del new_t3
         del state_dict
         del clean_state_dict
         torch.cuda.empty_cache()
+
+    def _log_generated_audio(self, output_path: str):
+        if not getattr(self.config, "is_inference", False):
+            return
+
+        try:
+            mlflow.log_artifact(output_path, artifact_path="generated_audio")
+            logger.info(f"Uploaded generated audio to MLflow: {output_path}")
+        except Exception as exc:
+            logger.error(f"Failed to upload generated audio to MLflow: {exc}", exc_info=True)

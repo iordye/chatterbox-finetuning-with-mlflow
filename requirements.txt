@@ -12,6 +12,7 @@ tqdm
 pandas
 safetensors
 tensorboard
+mlflow
 omegaconf
 hf_transfer
 pyloudnorm
